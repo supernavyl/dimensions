@@ -23,6 +23,7 @@ func build(rng: RandomNumberGenerator) -> void:
 	_add_floor()
 	_place_desks(rng)
 	_add_player_spawn()
+	_add_post_processing(0.001)
 
 
 func _add_environment() -> void:
@@ -82,3 +83,16 @@ func _add_player_spawn() -> void:
 	spawn.name = &"PlayerSpawn"
 	spawn.position = Vector3(0.0, 1.0, 4.0)
 	add_child(spawn)
+
+
+func _add_post_processing(strength: float) -> void:
+	var canvas := CanvasLayer.new()
+	canvas.layer = 5  # below DeathSequence (10) and FinalEvent (20)
+	var overlay := ColorRect.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/chromatic_aberration.gdshader") as Shader
+	mat.set_shader_parameter(&"strength", strength)
+	overlay.material = mat
+	canvas.add_child(overlay)
+	add_child(canvas)

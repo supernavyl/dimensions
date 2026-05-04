@@ -45,9 +45,20 @@ func _on_player_died(cause: DeathCause) -> void:
 
 
 func _on_final_event() -> void:
-	# Phase 5 wires in FinalEvent scene.
-	# Stub: log and do nothing — prevents crash if fired before scene is built.
-	push_warning("Main: final_event_triggered — FinalEvent scene not yet implemented (Phase 5)")
+	var dm: DeathManager = _player.get_node_or_null("DeathManager") as DeathManager
+	if dm != null and dm.player_died.is_connected(_on_player_died):
+		dm.player_died.disconnect(_on_player_died)
+
+	var packed: PackedScene = load("res://scenes/final_event.tscn") as PackedScene
+	if packed == null:
+		push_error("Main: failed to load final_event.tscn")
+		return
+	var fe: FinalEvent = packed.instantiate() as FinalEvent
+	if fe == null:
+		push_error("Main: final_event.tscn root is not FinalEvent")
+		return
+	add_child(fe)
+	fe.play()
 
 
 func _input(event: InputEvent) -> void:
