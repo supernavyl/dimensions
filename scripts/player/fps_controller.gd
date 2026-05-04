@@ -42,6 +42,10 @@ func _physics_process(delta: float) -> void:
 	if not _body.is_on_floor():
 		_body.velocity.y -= _gravity * delta
 
+	# Jump — ADR-004 resolved: wire jump input to jump_velocity export.
+	if Input.is_action_just_pressed(&"jump") and _body.is_on_floor():
+		_body.velocity.y = jump_velocity
+
 	var input_dir: Vector2 = Input.get_vector(
 		&"move_left", &"move_right", &"move_forward", &"move_back"
 	)

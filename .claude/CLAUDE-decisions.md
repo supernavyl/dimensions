@@ -68,3 +68,55 @@ because class references are first-class values. It avoids a large static
 Constraint: all template classes must extend `Node3D` and expose:
 - `var data: DimensionData` (set before `build()` is called)
 - `func build(rng: RandomNumberGenerator) -> void`
+
+---
+
+## ADR-006 — Single-writer physics: BT leaves write velocity, NPCController calls move_and_slide
+**Date:** 2026-05-04
+**Status:** ACTIVE
+
+`NPCController._physics_process` is the **only** site that calls `move_and_slide()`.
+All behavior tree leaf nodes (`BTWander`, `BTIdle`, `BTPursue`, `BTThreaten`) write
+`actor.velocity.x` and `actor.velocity.z` only. They must never call `move_and_slide()`
+themselves.
+
+Rationale: multiple `move_and_slide()` calls per frame on the same body corrupt
+velocity integration. Centralizing the call in `_physics_process` after the BT
+tick ensures exactly one integration step per frame.
+
+**Enforcement:** Code review gate on any `actor.move_and_slide()` call inside a
+`BTNode` subclass. Reject without exception.
+
+---
+
+## ADR-007 — NPC spawn distance invariant: ≥ 2.0 m from player
+**Date:** 2026-05-04
+**Status:** ACTIVE
+
+`DimensionRoot._pick_safe_spawn()` rejects candidate positions closer than 2.0 m
+to the player using rejection sampling (up to 16 tries). If all 16 candidates fail,
+the fallback pushes the NPC radially outward at exactly 2.0 m at a random angle.
+
+The player must be relocated to `get_player_spawn()` **before** `_spawn_npcs()` is
+called, so that spawn distances are measured from the correct in-world position and
+not from world origin.
+
+Rationale: NPCs spawning inside or on top of the player causes immediate kill-range
+firing and a broken first impression of the dimension.
+
+---
+
+## ADR-008 — entered_kill_range signal is one-shot per NPC lifetime
+**Date:** 2026-05-04
+**Status:** ACTIVE
+
+`NPCController` holds a `_kill_emitted: bool = false` latch. The latch is set to
+`true` on the first frame that `global_position.distance_to(_player.global_position)
+<= kill_range`. The signal `entered_kill_range` is emitted exactly once per NPC
+lifetime regardless of how many subsequent frames the NPC remains in kill range.
+
+Rationale: without the latch, `trigger_death()` would be called on every physics
+frame the NPC is in range — even though `DimensionManager._dying` would absorb the
+re-entrant calls, this would generate superfluous signal emissions and make the
+signal semantics misleading. The latch makes intent explicit and removes the
+dependency on `_dying` for correctness.

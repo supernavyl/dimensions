@@ -69,3 +69,104 @@ func test_unknown_template_id_falls_back_gracefully() -> void:
 	# Should not crash — should fall back to TemplateVoid
 	_root.initialize(data, null)
 	assert_not_null(_root.get_data())
+
+
+# ---------------------------------------------------------------------------
+# _spawn_npcs — null player guard (safe without physics scene)
+# ---------------------------------------------------------------------------
+
+func test_spawn_npcs_skips_npc_container_when_player_null() -> void:
+	# All existing tests pass null — verify that no NPCContainer is created.
+	_root.initialize(_make_data(), null)
+	var found: bool = false
+	for child: Node in _root.get_children():
+		if child is Node3D and child.name == "NPCContainer":
+			found = true
+			break
+	assert_false(found)
+
+
+func test_spawn_npcs_creates_npc_container_when_player_provided() -> void:
+	# Provide a real CharacterBody3D so _spawn_npcs proceeds past the null guard.
+	var player := CharacterBody3D.new()
+	add_child_autofree(player)
+	player.global_position = Vector3.ZERO
+
+	# npc_count_min/max = 1/1 so exactly one NPC is spawned.
+	var data: DimensionData = _make_data()
+	data.npc_count_min = 1
+	data.npc_count_max = 1
+	_root.initialize(data, player)
+
+	var found: bool = false
+	for child: Node in _root.get_children():
+		if child is Node3D and child.name == "NPCContainer":
+			found = true
+			break
+	assert_true(found)
+
+
+func test_spawn_npcs_npc_count_matches_min_when_min_equals_max() -> void:
+	var player := CharacterBody3D.new()
+	add_child_autofree(player)
+	player.global_position = Vector3.ZERO
+
+	var data: DimensionData = _make_data()
+	data.npc_count_min = 2
+	data.npc_count_max = 2
+	_root.initialize(data, player)
+
+	var npc_container: Node = null
+	for child: Node in _root.get_children():
+		if child is Node3D and child.name == "NPCContainer":
+			npc_container = child
+			break
+
+	assert_not_null(npc_container)
+	assert_eq(npc_container.get_child_count(), 2)
+
+
+func test_spawn_npcs_npcs_are_npc_controller_instances() -> void:
+	var player := CharacterBody3D.new()
+	add_child_autofree(player)
+	player.global_position = Vector3.ZERO
+
+	var data: DimensionData = _make_data()
+	data.npc_count_min = 1
+	data.npc_count_max = 1
+	_root.initialize(data, player)
+
+	var npc_container: Node = null
+	for child: Node in _root.get_children():
+		if child is Node3D and child.name == "NPCContainer":
+			npc_container = child
+			break
+
+	assert_not_null(npc_container)
+	assert_true(npc_container.get_child(0) is NPCController)
+
+
+func test_spawn_npcs_all_npcs_outside_minimum_spawn_distance() -> void:
+	var player := CharacterBody3D.new()
+	add_child_autofree(player)
+	player.global_position = Vector3.ZERO
+
+	var data: DimensionData = _make_data()
+	data.npc_count_min = 3
+	data.npc_count_max = 3
+	_root.initialize(data, player)
+
+	var npc_container: Node = null
+	for child: Node in _root.get_children():
+		if child is Node3D and child.name == "NPCContainer":
+			npc_container = child
+			break
+
+	assert_not_null(npc_container)
+	for child: Node in npc_container.get_children():
+		var npc := child as NPCController
+		if npc == null:
+			continue
+		var dist: float = npc.position.distance_to(player.global_position)
+		# _SPAWN_MIN_DIST = 2.0 — every NPC must be at least 2m from the player.
+		assert_true(dist >= 2.0)
