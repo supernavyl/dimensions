@@ -40,6 +40,7 @@ func initialize(data: DimensionData, player: CharacterBody3D) -> void:
 		player.global_position = get_player_spawn()
 
 	_spawn_npcs(rng, player)
+	_maybe_spawn_cause_rule(player)
 
 
 func _build_template(rng: RandomNumberGenerator) -> void:
@@ -127,10 +128,30 @@ func _pick_safe_spawn(rng: RandomNumberGenerator, player_pos: Vector3) -> Vector
 
 
 ## Callback connected to each NPC's entered_kill_range signal.
-## Fires DimensionManager.trigger_death(player). Re-entrant calls are swallowed
-## by DimensionManager's _dying latch (ADR-001).
+## Routes through the player's DeathManager so DeathCause metadata is preserved.
+## Falls back to direct trigger_death if DeathManager is absent (e.g. in tests).
 func _on_npc_kill_range(_npc: NPCController, player: CharacterBody3D) -> void:
-	DimensionManager.trigger_death(player)
+	var dm: DeathManager = player.get_node_or_null("DeathManager") as DeathManager
+	if dm == null:
+		push_warning("DimensionRoot: no DeathManager on player — using direct trigger_death")
+		DimensionManager.trigger_death(player)
+		return
+	dm.trigger(&"npc")
+
+
+## Instantiates a CauseRule if data.rule_id is set. Adds it as a child of
+## DimensionRoot so it is freed with the dimension and calls _exit_tree unregister.
+func _maybe_spawn_cause_rule(player: CharacterBody3D) -> void:
+	if _data.rule_id == &"" or player == null:
+		return
+	var dm: DeathManager = player.get_node_or_null("DeathManager") as DeathManager
+	if dm == null:
+		push_warning("DimensionRoot: no DeathManager on player — skipping CauseRule")
+		return
+	var rule := CauseRule.new()
+	rule.name = "CauseRule"
+	add_child(rule)
+	rule.setup(player, dm, _data)
 
 
 ## Returns the world position of the PlayerSpawn Marker3D, or Vector3.ZERO.

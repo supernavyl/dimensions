@@ -120,3 +120,55 @@ frame the NPC is in range — even though `DimensionManager._dying` would absorb
 re-entrant calls, this would generate superfluous signal emissions and make the
 signal semantics misleading. The latch makes intent explicit and removes the
 dependency on `_dying` for correctness.
+
+---
+
+## ADR-009 — DeathSequence parented to current_scene, not _current_dimension (Phase 4)
+**Date:** 2026-05-04
+**Status:** ACTIVE
+
+`DeathSequence` is added as a child of `get_tree().current_scene` (Main), not
+of `_current_dimension`. This is enforced in `DimensionManager._play_death_sequence()`.
+
+Rationale: `_current_dimension` is freed at the start of `load_next_dimension()`,
+which is called immediately after the sequence finishes. If DeathSequence were
+parented to the dimension, it would be freed mid-sequence the moment the dimension
+transition begins, cutting the fade short and causing the `await` in
+`DeathSequence.play()` to reference a freed node. Parenting to the stable scene
+root avoids this lifetime dependency entirely.
+
+---
+
+## ADR-010 — DeathManager._triggered latch is reset-only from dimension_loaded listener (Phase 4)
+**Date:** 2026-05-04
+**Status:** ACTIVE — extends ADR-001
+
+`DeathManager._on_dimension_loaded()` resets `_triggered = false` and does
+nothing else. It must never call `trigger()` or any path that emits `player_died`.
+
+Rationale: `dimension_loaded` is emitted from inside `load_next_dimension()`,
+which is called from `_on_death_sequence_finished()`, which is itself wired to
+`sequence_finished`. Any trigger call from the `dimension_loaded` handler would
+re-enter the death path while `_dying` is still `true` (it resets at the end of
+`load_next_dimension()`), creating a brief window where double-death could slip
+through if the latch is cleared before `_dying` resets. The reset-only invariant
+eliminates this class of bug entirely.
+
+---
+
+## ADR-011 — CauseRule instantiated in DimensionRoot, freed with the dimension (Phase 4)
+**Date:** 2026-05-04
+**Status:** ACTIVE
+
+`CauseRule` is added as a child of `DimensionRoot` (not of the Player or
+DeathManager). This means it is freed automatically when the dimension is freed.
+`CauseRule._exit_tree()` calls `DeathManager.unregister_cause(rule_id)` to
+clean up the registered cause before the node is gone.
+
+Rationale: rules are dimension-scoped. Parenting to the player would require
+manual cleanup logic in DeathManager or Main. Parenting to DimensionRoot ties the
+rule lifetime directly to the dimension lifetime and leverages `_exit_tree()` as
+the natural cleanup hook — no external orchestration needed.
+
+`CauseFall` deliberately does NOT follow this pattern: fall detection is
+player-physics-scoped and must persist across dimension transitions.
