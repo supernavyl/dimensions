@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://dimension_root_scene"]
+
+[ext_resource type="Script" path="res://scripts/dimension/dimension_root.gd" id="1_dimroot"]
+
+[node name="DimensionRoot" type="Node3D"]
+script = ExtResource("1_dimroot")
+
+[node name="NPCContainer" type="Node3D" parent="."]
