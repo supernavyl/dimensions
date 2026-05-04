@@ -20,6 +20,9 @@ func _add_environment() -> void:
 	var environment: Environment = Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = data.ambient_color if data != null else Color(0.05, 0.05, 0.07)
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.5, 0.45, 0.6)
+	environment.ambient_light_energy = 1.2
 	environment.fog_enabled = true
 	environment.fog_density = data.fog_density if data != null else 0.02
 	env.environment = environment
@@ -33,8 +36,7 @@ func _add_floor() -> void:
 	plane.size = Vector2(200.0, 200.0)
 	mesh_inst.mesh = plane
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	if data != null:
-		mat.albedo_color = data.ambient_color.darkened(0.3)
+	mat.albedo_color = Color(0.14, 0.11, 0.18)
 	mesh_inst.material_override = mat
 	add_child(mesh_inst)
 

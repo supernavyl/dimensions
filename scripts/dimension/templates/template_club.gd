@@ -32,6 +32,9 @@ func _add_environment() -> void:
 	var environment: Environment = Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color(0.02, 0.01, 0.04)
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = Color(0.1, 0.05, 0.15)
+	environment.ambient_light_energy = 0.8
 	environment.fog_enabled = true
 	environment.fog_density = 0.06
 	env.environment = environment

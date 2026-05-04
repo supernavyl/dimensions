@@ -33,6 +33,19 @@ func _ready() -> void:
 	collision.position = Vector3(0.0, 0.85, 0.0)
 	add_child(collision)
 
+	# Visual mesh — dark featureless silhouette.
+	var mesh_inst := MeshInstance3D.new()
+	var cap_mesh := CapsuleMesh.new()
+	cap_mesh.height = 1.7
+	cap_mesh.radius = 0.35
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.25, 0.20, 0.30)
+	mat.roughness = 1.0
+	mesh_inst.mesh = cap_mesh
+	mesh_inst.material_override = mat
+	mesh_inst.position = Vector3(0.0, 0.85, 0.0)
+	add_child(mesh_inst)
+
 
 ## Wires the NPC to its player target and builds the behavior tree for the given goal.
 func setup(goal: NPCGoalGenerator.Goal, player: CharacterBody3D, rng: RandomNumberGenerator) -> void:
