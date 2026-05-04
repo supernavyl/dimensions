@@ -123,7 +123,7 @@ func test_idle_does_not_modify_y_velocity() -> void:
 	idle.duration = 2.0
 	_actor.velocity = Vector3(0.0, -9.8, 0.0)
 	idle.tick(_actor, 0.016)
-	assert_eq(_actor.velocity.y, -9.8)
+	assert_almost_eq(_actor.velocity.y, -9.8, 0.001)
 
 
 # ---------------------------------------------------------------------------
@@ -257,7 +257,7 @@ func test_pursue_does_not_modify_y_velocity() -> void:
 	pursue.target = _make_target_at(Vector3(5.0, 0.0, 0.0))
 	_actor.velocity = Vector3(0.0, -9.8, 0.0)
 	pursue.tick(_actor, 0.016)
-	assert_eq(_actor.velocity.y, -9.8)
+	assert_almost_eq(_actor.velocity.y, -9.8, 0.001)
 
 
 func test_pursue_speed_magnitude_matches_move_speed() -> void:
@@ -370,7 +370,7 @@ func test_threaten_does_not_modify_y_velocity() -> void:
 	threaten.init_rng(RandomNumberGenerator.new())
 	_actor.velocity = Vector3(0.0, -9.8, 0.0)
 	threaten.tick(_actor, 0.016)
-	assert_eq(_actor.velocity.y, -9.8)
+	assert_almost_eq(_actor.velocity.y, -9.8, 0.001)
 
 
 func test_threaten_creates_rng_lazily_without_crash() -> void:

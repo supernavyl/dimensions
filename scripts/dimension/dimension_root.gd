@@ -12,7 +12,8 @@ const _SPAWN_RADIUS: float = 6.0
 const _SPAWN_MAX_TRIES: int = 16
 
 ## Lookup table mapping template_id StringName to template class.
-const _TEMPLATES: Dictionary = {
+## Must be var, not const — class references are not constant expressions in GDScript.
+var _TEMPLATES: Dictionary = {
 	&"void": TemplateVoid,
 	&"club": TemplateClub,
 	&"classroom": TemplateClassroom,
