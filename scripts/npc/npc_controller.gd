@@ -1,6 +1,10 @@
 ## NPCController — behavior-tree-driven NPC entity.
-## Extends CharacterBody3D; CollisionShape3D is built in _ready().
+## Extends CharacterBody3D; CollisionShape3D + SkeletonBody built in _ready().
 ## Call setup(goal, player, rng) after add_child() to initialize the NPC.
+##
+## Body rendering is delegated to SkeletonBody (ADR-012). The duplicate
+## per-NPC sway/breath/emission-pulse loop that lived here in v0 is now a
+## single shared system on the player and every NPC.
 class_name NPCController
 extends CharacterBody3D
 
@@ -16,6 +20,7 @@ var _gravity: float = 0.0
 
 var _player: CharacterBody3D = null
 var _tree: BTNode = null
+var _skeleton: SkeletonBody = null
 
 ## One-shot latch: prevents entered_kill_range from firing more than once.
 var _kill_emitted: bool = false
@@ -24,7 +29,6 @@ var _kill_emitted: bool = false
 func _ready() -> void:
 	_gravity = ProjectSettings.get_setting("physics/3d/default_gravity") as float
 
-	# Build collision shape programmatically — no .tscn required.
 	var collision := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.height = 1.7
@@ -33,53 +37,49 @@ func _ready() -> void:
 	collision.position = Vector3(0.0, 0.85, 0.0)
 	add_child(collision)
 
-	# Visual mesh — dark featureless silhouette.
-	var mesh_inst := MeshInstance3D.new()
-	var cap_mesh := CapsuleMesh.new()
-	cap_mesh.height = 1.7
-	cap_mesh.radius = 0.35
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.25, 0.20, 0.30)
-	mat.roughness = 1.0
-	mesh_inst.mesh = cap_mesh
-	mesh_inst.material_override = mat
-	mesh_inst.position = Vector3(0.0, 0.85, 0.0)
-	add_child(mesh_inst)
+	_skeleton = SkeletonBody.new()
+	# Show the head — NPCs are seen from outside, the camera-occlusion
+	# concern that hides the player's own skull doesn't apply here.
+	_skeleton.hide_head = false
+	add_child(_skeleton)
 
 
 ## Wires the NPC to its player target and builds the behavior tree for the given goal.
 func setup(goal: NPCGoalGenerator.Goal, player: CharacterBody3D, rng: RandomNumberGenerator) -> void:
 	_player = player
+
+	# Per-NPC color variation via SkeletonBody.set_style — replaces the
+	# per-instance Standard­Material3D mutation that lived here.
+	if _skeleton != null:
+		var hue: float = rng.randf_range(0.72, 0.92)
+		var sat: float = rng.randf_range(0.5, 0.9)
+		var val: float = rng.randf_range(0.5, 1.0)
+		var c: Color = Color.from_hsv(hue, sat, val)
+		_skeleton.set_style(c, rng.randf_range(0.7, 1.4))
+
 	_tree = _build_tree(goal, rng)
 	if _tree != null:
 		add_child(_tree)
 
 
 func _physics_process(delta: float) -> void:
-	# Guard: dimension unloads may free this node while one tick is still queued.
 	if _player == null or not is_instance_valid(_player):
 		return
 	if _tree == null:
 		return
 
-	# Apply gravity.
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 
-	# Tick the behavior tree — leaves write velocity, never call move_and_slide.
 	_tree.tick(self, delta)
-
-	# Single move_and_slide call per frame — the only place in NPCController.
 	move_and_slide()
 
-	# Kill-range check: one-shot per NPC lifetime.
 	if not _kill_emitted and global_position.distance_to(_player.global_position) <= kill_range:
 		_kill_emitted = true
 		entered_kill_range.emit(self)
 
 
 ## Builds and returns the root BTNode for the given goal.
-## Returns null only if the goal value is unrecognised (defensive).
 func _build_tree(goal: NPCGoalGenerator.Goal, rng: RandomNumberGenerator) -> BTNode:
 	match goal:
 		NPCGoalGenerator.Goal.WANDER:
@@ -93,9 +93,6 @@ func _build_tree(goal: NPCGoalGenerator.Goal, rng: RandomNumberGenerator) -> BTN
 			return _make_idle_wander_tree(rng)
 
 
-## Goal: WANDER — wander continuously within a radius.
-## BTSelector was removed: BTIdle returns SUCCESS (not FAILURE), so the selector
-## short-circuited before BTWander ever ticked. Return BTWander directly.
 func _make_idle_wander_tree(rng: RandomNumberGenerator) -> BTNode:
 	var wander := BTWander.new()
 	wander.wander_radius = 5.0
@@ -104,7 +101,6 @@ func _make_idle_wander_tree(rng: RandomNumberGenerator) -> BTNode:
 	return wander
 
 
-## Goal: PURSUE — move toward the player until close, then hold.
 func _make_pursue_tree(rng: RandomNumberGenerator) -> BTNode:
 	var pursue := BTPursue.new()
 	pursue.target = _player
@@ -113,7 +109,17 @@ func _make_pursue_tree(rng: RandomNumberGenerator) -> BTNode:
 	return pursue
 
 
-## Goal: THREATEN — enter player's space and maintain threat presence.
+## Applies a per-template skeletal mutation to this NPC's SkeletonBody.
+## seed is derived from the dimension seed + NPC index so each NPC varies
+## within the template family without disturbing the dimension rng sequence.
+func mutate_skeleton(template_id: StringName, seed: int) -> void:
+	if _skeleton == null or not is_instance_valid(_skeleton):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed
+	_skeleton.mutate_for_template(template_id, rng)
+
+
 func _make_threaten_tree(rng: RandomNumberGenerator) -> BTNode:
 	var threaten := BTThreaten.new()
 	threaten.target = _player

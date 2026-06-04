@@ -17,6 +17,9 @@ var _TEMPLATES: Dictionary = {
 	&"void": TemplateVoid,
 	&"club": TemplateClub,
 	&"classroom": TemplateClassroom,
+	&"isekai": TemplateIsekai,
+	&"anatomy_alveolus": TemplateAnatomyAlveolus,
+	&"farm_endless": TemplateFarmEndless,
 }
 
 var _data: DimensionData = null
@@ -42,6 +45,7 @@ func initialize(data: DimensionData, player: CharacterBody3D) -> void:
 
 	_spawn_npcs(rng, player)
 	_maybe_spawn_cause_rule(player)
+	_apply_player_skeleton_mutation(player)
 
 
 func _build_template(rng: RandomNumberGenerator) -> void:
@@ -100,6 +104,7 @@ func _spawn_npcs(rng: RandomNumberGenerator, player: CharacterBody3D) -> void:
 		npc.global_position = spawn_pos
 		var goal: NPCGoalGenerator.Goal = NPCGoalGenerator.generate(rng)
 		npc.setup(goal, player, rng)
+		npc.mutate_skeleton(_data.template_id, _data.seed + (i + 1) * 2053)
 		# bind(player) passes player as the second argument to _on_npc_kill_range.
 		npc.entered_kill_range.connect(_on_npc_kill_range.bind(player))
 
@@ -153,6 +158,20 @@ func _maybe_spawn_cause_rule(player: CharacterBody3D) -> void:
 	rule.name = "CauseRule"
 	add_child(rule)
 	rule.setup(player, dm, _data)
+
+
+## Resets and re-mutates the player's SkeletonBody for the current template.
+## Uses a seed derived from _data.seed so the player body varies per dimension
+## independently of the NPC rng sequence.
+func _apply_player_skeleton_mutation(player: CharacterBody3D) -> void:
+	if player == null:
+		return
+	var skeleton: SkeletonBody = player.get_node_or_null("SkeletonBody") as SkeletonBody
+	if skeleton == null:
+		return
+	var mut_rng := RandomNumberGenerator.new()
+	mut_rng.seed = _data.seed
+	skeleton.mutate_for_template(_data.template_id, mut_rng)
 
 
 ## Returns the world position of the PlayerSpawn Marker3D, or Vector3.ZERO.

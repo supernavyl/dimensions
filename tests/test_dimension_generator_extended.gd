@@ -6,7 +6,9 @@ var _gen: DimensionGenerator
 func before_each() -> void:
 	_gen = DimensionGenerator.new()
 
-const _VALID_TEMPLATES: Array[StringName] = [&"void", &"club", &"classroom"]
+const _VALID_TEMPLATES: Array[StringName] = [
+	&"void", &"club", &"classroom", &"isekai", &"anatomy_alveolus", &"farm_endless"
+]
 
 func test_generated_data_is_not_null() -> void:
 	assert_not_null(_gen.generate())

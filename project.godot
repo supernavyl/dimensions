@@ -24,6 +24,8 @@ config/icon="res://icon.svg"
 
 GameState="*res://scripts/autoloads/game_state.gd"
 DimensionManager="*res://scripts/autoloads/dimension_manager.gd"
+AmbientAudio="*res://scripts/autoloads/ambient_audio.gd"
+Screenshotter="*res://scripts/autoloads/screenshotter.gd"
 
 [display]
 

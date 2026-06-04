@@ -3,7 +3,9 @@
 class_name DimensionGenerator
 extends RefCounted
 
-const _TEMPLATES: Array[StringName] = [&"void", &"club", &"classroom"]
+const _TEMPLATES: Array[StringName] = [
+	&"void", &"club", &"classroom", &"isekai", &"anatomy_alveolus", &"farm_endless"
+]
 const _THRESHOLD_MIN: float = 90.0
 const _THRESHOLD_MAX: float = 300.0
 const _GRAVITY_MIN: float = 0.6
@@ -13,6 +15,8 @@ const _FOG_MAX: float = 0.08
 
 
 ## Generates one randomized DimensionData with a unique seed.
+## Honours the DIM_FORCE_TEMPLATE env var when set — useful for debugging
+## a specific template without re-rolling.
 func generate() -> DimensionData:
 	var data: DimensionData = DimensionData.new()
 	# Each call gets a globally unique integer seed.
@@ -21,7 +25,11 @@ func generate() -> DimensionData:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = data.seed
 
-	data.template_id = _TEMPLATES[rng.randi_range(0, _TEMPLATES.size() - 1)]
+	var forced: String = OS.get_environment("DIM_FORCE_TEMPLATE")
+	if forced != "" and _TEMPLATES.has(StringName(forced)):
+		data.template_id = StringName(forced)
+	else:
+		data.template_id = _TEMPLATES[rng.randi_range(0, _TEMPLATES.size() - 1)]
 	data.survival_threshold = rng.randf_range(_THRESHOLD_MIN, _THRESHOLD_MAX)
 	data.npc_count_min = rng.randi_range(1, 3)
 	data.npc_count_max = data.npc_count_min + rng.randi_range(0, 3)
