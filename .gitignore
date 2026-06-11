@@ -20,7 +20,3 @@ Thumbs.db
 
 # Editor configuration overrides (local only)
 .editorconfig.local
-
-# internal tooling
-.superpowers/
-.claude/
