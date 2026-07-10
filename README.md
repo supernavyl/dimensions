@@ -1,5 +1,7 @@
 # Dimensions
 
+[![CI](https://github.com/supernavyl/dimensions/actions/workflows/ci.yml/badge.svg)](https://github.com/supernavyl/dimensions/actions/workflows/ci.yml)
+
 A Godot 4 narrative action game built in GDScript: dimension-shifting
 mechanics, NPC behaviour trees, a death/respawn system, and post-processing.
 
